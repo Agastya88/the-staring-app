@@ -1,0 +1,195 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(to bottom, transparent, rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
+}
+
+.text-shadow {
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* TV Frame Styles */
+.tv-frame {
+  border: 24px solid;
+  border-image: linear-gradient(45deg, #333 0%, #444 20%, #333 40%, #222 60%, #111 80%, #000 100%) 1;
+  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 0, 0, 0.9);
+}
+
+/* CRT Screen Effect */
+.tv-screen {
+  position: relative;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tv-screen::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+    linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  background-size: 100% 2px, 3px 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* TV Overlay Effect */
+.tv-overlay {
+  background: radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.2) 90%);
+  mix-blend-mode: multiply;
+}
+
+/* CRT Power Effect */
+.tv-crt {
+  position: relative;
+  background: linear-gradient(45deg, #111, #222);
+}
+
+.tv-crt::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(transparent 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%);
+  animation: scanline 8s linear infinite;
+}
+
+/* TV Controls Style */
+.tv-controls {
+  background: linear-gradient(45deg, #1a1a1a, #2a2a2a);
+  border: 2px solid #333;
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8), 0 0 10px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+.tv-controls::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.1) 2px,
+    rgba(0, 0, 0, 0.1) 4px
+  );
+  pointer-events: none;
+}
+
+@keyframes scanline {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+/* Add static noise effect */
+.tv-screen::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyBAMAAADsEZWCAAAAGFBMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMABA+AAAACHRSTlMzMzMzMzMzM85JBgUAAAAJcEhZcwAADdcAAA3XAUIom3gAAAAVdEVYdFNvZnR3YXJlAGdpbXAtMi4xMC4xN4E9/OAAAAA8SURBVDjLY2BABvyKDGiAH0mOQQHJPDFlRjQ+uqEMaOYhWY1mHjJ/AC0YwDAP2W3o5iHBgG4eEgzo5gEADicYi5DlF8MAAAAASUVORK5CYII=");
+  opacity: 0.05;
+  pointer-events: none;
+  z-index: 15;
+}
+
+/* Retro Screen Effect */
+.retro-screen {
+  background: linear-gradient(to bottom, #000000, #111111);
+  box-shadow: inset 0 0 20px rgba(255, 180, 0, 0.1), 0 0 10px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.retro-screen::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(rgba(255, 180, 0, 0.03) 50%, rgba(0, 0, 0, 0.1) 50%);
+  background-size: 100% 4px;
+  pointer-events: none;
+}
+
+/* Retro Button Style */
+.retro-button {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5), 0 0 5px rgba(0, 0, 0, 0.5);
+  transition: all 0.2s ease;
+}
+
+.retro-button:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8), 0 0 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Dial Styles */
+.dial {
+  position: relative;
+  transform: rotate(0deg);
+  transition: transform 0.3s ease;
+}
+
+.dial:hover {
+  cursor: pointer;
+  transform: rotate(10deg);
+}
+
+.dial-ticks {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
+
+.dial-ticks::before {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 29deg,
+    rgba(255, 180, 0, 0.3) 29deg,
+    rgba(255, 180, 0, 0.3) 30deg
+  );
+  border-radius: 50%;
+}
+
