@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import { Inter, Creepster } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import ClientLayout from "./components/clientLayout"; // Import Client Component
 
 
 const inter = Inter({ subsets: ["latin"] });
-const creepster = Creepster({ weight: "400", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "The Staring Contest",
