@@ -49,7 +49,7 @@ export default function Game() {
 
   // ---- Setup WebSocket on Mount ----
   useEffect(() => {
-    const ws = new WebSocket("wss://staring-contest-backend.up.railway.app/ws/video");
+    const ws = new WebSocket("wss://staring-app-backend-production.up.railway.app/ws/video");
     setSocket(ws);
 
     ws.onopen = () => {
