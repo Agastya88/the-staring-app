@@ -1,11 +1,8 @@
 [phases.setup]
-nixPkgs = ["python3", "gcc"]
+nixPkgs = ["python3", "gcc", "mesa"]
 
 [phases.build]
 cmds = ["pip install -r requirements.txt"]
-packages = [
-  "mesa"  # This package should include libGL.so.1
-]
 
 [start]
 cmd = "uvicorn eye_detection_api:app --host 0.0.0.0 --port 8000"
