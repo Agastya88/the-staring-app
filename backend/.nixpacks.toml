@@ -5,4 +5,5 @@ nixPkgs = ["python3", "gcc"]
 cmds = ["pip install -r requirements.txt"]
 
 [start]
-cmd = "python eye_detection_api.py"
+cmd = "uvicorn eye_detection_api:app --host 0.0.0.0 --port 8000"  # Replace `main` with your Python file
+
