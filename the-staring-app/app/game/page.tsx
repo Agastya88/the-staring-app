@@ -15,8 +15,12 @@ const spaceMono = Space_Mono({ weight: "400", subsets: ["latin"] });
 const MAX_BLINK_COUNT = 10;
 
 const levelVideos = [
-  "https://www.youtube.com/watch?v=FUQhNGEu2KA", // Level 1: lights out
-  "https://www.youtube.com/watch?v=qKpLOfgwpsU", // Level 2: moonlight man
+  "https://www.youtube.com/watch?v=W184Uc2zC2Y", // Level 1: lights out
+  "https://www.youtube.com/shorts/5MFSBMcYZTw", // Level 2: moonlight man
+  "https://www.youtube.com/watch?v=DCeVPPBq2Xc",
+  "https://www.youtube.com/watch?v=TZiSWOhDIwQ",
+  "https://www.youtube.com/watch?v=FUQhNGEu2KA",
+  "https://www.youtube.com/watch?v=qKpLOfgwpsU",
   "https://www.youtube.com/watch?v=0z6xGU2_g9s", // Level 3: bedfellows by FEWDIO
 ];
 
