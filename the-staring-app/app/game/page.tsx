@@ -16,7 +16,6 @@ const MAX_BLINK_COUNT = 10;
 
 const levelVideos = [
   "https://www.youtube.com/watch?v=W184Uc2zC2Y", // Super Easy
-  "https://www.reddit.com/r/EscapefromTarkov/comments/1gzun81/jumpscare_warning_video/", // Very Easy
   "https://www.youtube.com/watch?v=oEFSxtjbrq4&ab_channel=PeterGriffin", // Easy
   "https://www.youtube.com/watch?v=zRlaf5uI2uA&ab_channel=RobertRyanIV", // Easy
   "https://www.youtube.com/watch?v=TZiSWOhDIwQ&rco=1&ab_channel=BlueLightningSpecter", // Easy
