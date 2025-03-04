@@ -15,13 +15,17 @@ const spaceMono = Space_Mono({ weight: "400", subsets: ["latin"] });
 const MAX_BLINK_COUNT = 10;
 
 const levelVideos = [
-  "https://www.youtube.com/watch?v=W184Uc2zC2Y", // Level 1: lights out
-  "https://www.youtube.com/shorts/5MFSBMcYZTw", // Level 2: moonlight man
-  "https://www.youtube.com/watch?v=DCeVPPBq2Xc",
-  "https://www.youtube.com/watch?v=TZiSWOhDIwQ",
-  "https://www.youtube.com/watch?v=FUQhNGEu2KA",
-  "https://www.youtube.com/watch?v=qKpLOfgwpsU",
-  "https://www.youtube.com/watch?v=0z6xGU2_g9s", // Level 3: bedfellows by FEWDIO
+  "https://www.youtube.com/watch?v=W184Uc2zC2Y", // Super Easy
+  "https://www.reddit.com/r/EscapefromTarkov/comments/1gzun81/jumpscare_warning_video/", // Very Easy
+  "https://www.youtube.com/watch?v=oEFSxtjbrq4&ab_channel=PeterGriffin", // Easy
+  "https://www.youtube.com/watch?v=zRlaf5uI2uA&ab_channel=RobertRyanIV", // Easy
+  "https://www.youtube.com/watch?v=TZiSWOhDIwQ&rco=1&ab_channel=BlueLightningSpecter", // Easy
+  "https://www.youtube.com/watch?v=qsJkFb7UW_g&ab_channel=RifqiFirdaus", // Medium
+  "https://www.youtube.com/watch?v=GMgsFZ4rkEI&ab_channel=BriennRockhill", // Medium
+  "https://www.youtube.com/watch?v=dJ0Bqg3I9SQ&ab_channel=HeysonLam", // Medium
+  "https://www.youtube.com/watch?v=DCeVPPBq2Xc", // Medium
+  "https://www.youtube.com/watch?v=l4SFiMrYplM&ab_channel=TFGOrbitzZ", // Medium
+  "https://www.youtube.com/watch?v=oo8tfJ2jz_Y&ab_channel=TNTgamer1" // Medium-Hard
 ];
 
 const ReactPlayer = dynamic(
