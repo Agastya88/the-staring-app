@@ -225,28 +225,7 @@ export default function Game() {
     }, 1500);
   };
 
-  // Attempt starting the game
-  const handleStartGame = () => {
-    setCurrentLevel(1);
-    setGameState("playing");
-    setBlinkCount(0);
-  };
 
-  // Attempt next level
-  const handleNextLevel = () => {
-    setCurrentLevel((prev) => prev + 1);
-    setGameState("playing");
-    setBlinkCount(0);
-    cameraBufferRef.current = [];
-  };
-
-  // We do actual fullscreen once the video starts playing => see onPlay below
-
-  const toggleFullscreen = () => {
-    if (playerContainerRef.current && screenfull.isEnabled) {
-      screenfull.toggle(playerContainerRef.current);
-    }
-  };
 
   // Volume dial
   const handleVolumeDial = (e: React.MouseEvent<HTMLDivElement>) => {
