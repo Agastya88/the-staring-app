@@ -33,7 +33,7 @@ export default function Home() {
           transition={{ duration: 2 }}
           className="creepster text-6xl mb-8 text-shadow"
         >
-          The Staring Contest
+          Jumpscare Roulette
         </motion.h1>
         <motion.p
           initial={{ opacity: 0 }}

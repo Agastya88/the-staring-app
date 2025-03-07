@@ -7,7 +7,7 @@ import ClientLayout from "./components/clientLayout"; // Import Client Component
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "The Staring Contest",
+  title: "Jumpscare Roulette",
   description: "Test your staring skills in this spooky challenge!",
 };
 

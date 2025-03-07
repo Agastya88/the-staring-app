@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
 import type { ReactPlayerProps } from "react-player";
+import screenfull from "screenfull";
 import { Creepster, Space_Mono } from "next/font/google";
 
 // ----- FONTS -----
@@ -12,21 +13,24 @@ const creepster = Creepster({ weight: "400", subsets: ["latin"] });
 const spaceMono = Space_Mono({ weight: "400", subsets: ["latin"] });
 
 // ----- CONFIG -----
-const MAX_BLINK_COUNT = 10;
+const MAX_BLINK_COUNT = 25; // increased from 10
+const FRAME_RATE = 10;             // 10 fps
+const BUFFER_LENGTH = FRAME_RATE * 5; // store last 5s => 50 frames
 
 const levelVideos = [
-  "https://www.youtube.com/watch?v=W184Uc2zC2Y", // Super Easy
-  "https://www.youtube.com/watch?v=oEFSxtjbrq4&ab_channel=PeterGriffin", // Easy
-  "https://www.youtube.com/watch?v=zRlaf5uI2uA&ab_channel=RobertRyanIV", // Easy
-  "https://www.youtube.com/watch?v=TZiSWOhDIwQ&rco=1&ab_channel=BlueLightningSpecter", // Easy
-  "https://www.youtube.com/watch?v=qsJkFb7UW_g&ab_channel=RifqiFirdaus", // Medium
-  "https://www.youtube.com/watch?v=GMgsFZ4rkEI&ab_channel=BriennRockhill", // Medium
-  "https://www.youtube.com/watch?v=dJ0Bqg3I9SQ&ab_channel=HeysonLam", // Medium
-  "https://www.youtube.com/watch?v=DCeVPPBq2Xc", // Medium
-  "https://www.youtube.com/watch?v=l4SFiMrYplM&ab_channel=TFGOrbitzZ", // Medium
-  "https://www.youtube.com/watch?v=oo8tfJ2jz_Y&ab_channel=TNTgamer1" // Medium-Hard
+  "https://www.youtube.com/watch?v=W184Uc2zC2Y",
+  "https://www.youtube.com/watch?v=oEFSxtjbrq4&ab_channel=PeterGriffin",
+  "https://www.youtube.com/watch?v=zRlaf5uI2uA&ab_channel=RobertRyanIV",
+  "https://www.youtube.com/watch?v=TZiSWOhDIwQ&rco=1&ab_channel=BlueLightningSpecter",
+  "https://www.youtube.com/watch?v=qsJkFb7UW_g&ab_channel=RifqiFirdaus",
+  "https://www.youtube.com/watch?v=GMgsFZ4rkEI&ab_channel=BriennRockhill",
+  "https://www.youtube.com/watch?v=dJ0Bqg3I9SQ&ab_channel=HeysonLam",
+  "https://www.youtube.com/watch?v=DCeVPPBq2Xc",
+  "https://www.youtube.com/watch?v=l4SFiMrYplM&ab_channel=TFGOrbitzZ",
+  "https://www.youtube.com/watch?v=oo8tfJ2jz_Y&ab_channel=TNTgamer1"
 ];
 
+// Dynamically load ReactPlayer
 const ReactPlayer = dynamic(
   () =>
     import("react-player").then((mod) => mod.default) as Promise<
@@ -35,69 +39,107 @@ const ReactPlayer = dynamic(
   { ssr: false }
 );
 
-// ----- MAIN GAME COMPONENT -----
+// Replay overlay for last 5 seconds
+function ReplayOverlay({
+  frames,
+  onClose,
+}: {
+  frames: string[];
+  onClose: () => void;
+}) {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (frames.length === 0) return;
+    const frameTimer = setInterval(() => {
+      setIndex((prev) => {
+        const next = prev + 1;
+        return next >= frames.length ? 0 : next;
+      });
+    }, 1000 / FRAME_RATE);
+
+    return () => clearInterval(frameTimer);
+  }, [frames]);
+
+  return (
+    <div className="absolute top-0 left-0 w-full h-full bg-black/90 z-50 flex flex-col items-center justify-center">
+      <div className="text-white mb-4">Replay: Last 5 Seconds</div>
+      {frames.length > 0 && (
+        <img
+          src={frames[index]}
+          alt="Replay Frame"
+          className="w-[320px] h-[240px] object-cover border-2 border-white"
+        />
+      )}
+      <button
+        className="mt-4 px-4 py-2 bg-gray-700 text-white rounded"
+        onClick={onClose}
+      >
+        Close Replay
+      </button>
+    </div>
+  );
+}
+
 export default function Game() {
-  // ---- Game State ----
   const [gameState, setGameState] = useState<"playing" | "completed" | "lost">("playing");
-
-  // Start at level 0 => show "Start Game" button
   const [currentLevel, setCurrentLevel] = useState(0);
-
-  // Blink Count per level
   const [blinkCount, setBlinkCount] = useState(0);
 
-  // ---- TV Volume / Brightness ----
-  const [volume, setVolume] = useState(0.5); // 0 to 1
-  const [brightness, setBrightness] = useState(1); // 0.2 to 1.2
+  const [volume, setVolume] = useState(0.5);
+  const [brightness, setBrightness] = useState(1);
 
-  // ---- WebSocket State & Refs ----
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const webcamRef = useRef<HTMLVideoElement>(null);
 
-  // ---- Setup WebSocket on Mount ----
+  const cameraBufferRef = useRef<string[]>([]);
+  const [showReplay, setShowReplay] = useState(false);
+  const [replayFrames, setReplayFrames] = useState<string[]>([]);
+
+  // ReactPlayer container for fullscreen
+  const playerContainerRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const fsButtonText = isFullscreen ? "Exit Fullscreen" : "Fullscreen";
+
+  // Listen to screenfull events
+  useEffect(() => {
+    if (screenfull.isEnabled) {
+      const onChange = () => setIsFullscreen(screenfull.isFullscreen);
+      screenfull.on("change", onChange);
+      return () => {
+        screenfull.off("change", onChange);
+      };
+    }
+  }, []);
+
+  // Setup WebSocket
   useEffect(() => {
     const ws = new WebSocket("wss://staring-app-backend-production.up.railway.app/ws/video");
     setSocket(ws);
 
-    ws.onopen = () => {
-      console.log("WebSocket connected to backend!");
-    };
-
+    ws.onopen = () => console.log("WebSocket connected!");
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      console.log("Received from server:", data);
+      console.log("From server:", data);
 
-      // Only apply checks if we're at level > 0 and game is "playing"
       if (currentLevel > 0 && gameState === "playing") {
-        if (data.status === "Looked away") {
-          setGameState("lost"); // immediate loss
-        } else if (data.status === "Distracted") {
-          // Count as a blink
+        if (data.status === "Looked away") handleLose();
+        else if (data.status === "Distracted") {
           setBlinkCount((prev) => {
             const newCount = prev + 1;
-            if (newCount >= MAX_BLINK_COUNT) {
-              setGameState("lost");
-            }
+            if (newCount >= MAX_BLINK_COUNT) handleLose();
             return newCount;
           });
         }
       }
     };
+    ws.onerror = (err) => console.error("WebSocket error:", err);
+    ws.onclose = () => console.log("WebSocket closed.");
 
-    ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
-
-    ws.onclose = () => {
-      console.log("WebSocket closed.");
-    };
-
-    return () => {
-      ws.close();
-    };
+    return () => ws.close();
   }, [currentLevel, gameState]);
 
-  // ---- Send Frames (with compression) ~10 FPS ----
+  // Invert camera & buffer frames
   useEffect(() => {
     if (!socket || !webcamRef.current) return;
 
@@ -105,16 +147,27 @@ export default function Game() {
       if (!webcamRef.current || socket.readyState !== WebSocket.OPEN) return;
 
       const videoEl = webcamRef.current;
+      if (!videoEl.videoWidth || !videoEl.videoHeight) return;
+
       const canvas = document.createElement("canvas");
       canvas.width = videoEl.videoWidth;
       canvas.height = videoEl.videoHeight;
-
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
+      // Flip horizontally
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
       ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
 
-      // Compress frames at ~60% quality
+      // Save to buffer
+      const frameData = canvas.toDataURL("image/jpeg", 0.6);
+      cameraBufferRef.current.push(frameData);
+      if (cameraBufferRef.current.length > BUFFER_LENGTH) {
+        cameraBufferRef.current.shift();
+      }
+
+      // Send to server
       canvas.toBlob(
         (blob) => {
           if (blob) {
@@ -128,11 +181,11 @@ export default function Game() {
       );
     };
 
-    const intervalId = setInterval(sendFrame, 100); // send frames every 100ms => ~10 fps
+    const intervalId = setInterval(sendFrame, 1000 / FRAME_RATE);
     return () => clearInterval(intervalId);
-  }, [socket]);
+  }, [socket, gameState]);
 
-  // ---- Request Webcam Stream at 320×240 ----
+  // Request webcam
   useEffect(() => {
     navigator.mediaDevices
       .getUserMedia({ video: { width: 320, height: 240 }, audio: false })
@@ -141,25 +194,61 @@ export default function Game() {
           webcamRef.current.srcObject = stream;
         }
       })
-      .catch((err) => {
-        console.error("Error accessing webcam:", err);
-      });
+      .catch((err) => console.error("Webcam error:", err));
   }, []);
 
-  // ---- Handlers ----
+  // If user switches tabs/apps, they lose
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden && gameState === "playing") handleLose();
+    };
+    const handleBlur = () => {
+      if (gameState === "playing") handleLose();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("blur", handleBlur);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("blur", handleBlur);
+    };
+  }, [gameState]);
+
+  // Lose => wait 3s => show replay
+  const handleLose = () => {
+    setGameState("lost");
+    const framesCopy = [...cameraBufferRef.current];
+    cameraBufferRef.current = [];
+    setTimeout(() => {
+      setReplayFrames(framesCopy);
+      setShowReplay(true);
+    }, 1500);
+  };
+
+  // Attempt starting the game
   const handleStartGame = () => {
     setCurrentLevel(1);
     setGameState("playing");
     setBlinkCount(0);
   };
 
+  // Attempt next level
   const handleNextLevel = () => {
     setCurrentLevel((prev) => prev + 1);
     setGameState("playing");
     setBlinkCount(0);
+    cameraBufferRef.current = [];
   };
 
-  // ---- Dials: Volume / Brightness ----
+  // We do actual fullscreen once the video starts playing => see onPlay below
+
+  const toggleFullscreen = () => {
+    if (playerContainerRef.current && screenfull.isEnabled) {
+      screenfull.toggle(playerContainerRef.current);
+    }
+  };
+
+  // Volume dial
   const handleVolumeDial = (e: React.MouseEvent<HTMLDivElement>) => {
     const dial = e.currentTarget;
     const rect = dial.getBoundingClientRect();
@@ -183,6 +272,7 @@ export default function Game() {
     document.addEventListener("mouseup", handleUp);
   };
 
+  // Brightness dial
   const handleBrightnessDial = (e: React.MouseEvent<HTMLDivElement>) => {
     const dial = e.currentTarget;
     const rect = dial.getBoundingClientRect();
@@ -206,7 +296,6 @@ export default function Game() {
     document.addEventListener("mouseup", handleUp);
   };
 
-  // ---- Render ----
   return (
     <main className="relative flex items-center justify-center min-h-screen bg-gray-900 p-4">
       {/* Branding */}
@@ -215,11 +304,18 @@ export default function Game() {
         animate={{ x: 0, opacity: 1 }}
         className={`${creepster.className} absolute top-6 left-7 text-4xl text-white opacity-90 text-shadow z-10`}
       >
-        The Staring Contest
+        Jumpscare Roulette
       </motion.h1>
 
+      {/* Replay overlay */}
+      {showReplay && (
+        <ReplayOverlay
+          frames={replayFrames}
+          onClose={() => setShowReplay(false)}
+        />
+      )}
+
       <div className="relative max-w-[1200px] w-full">
-        {/* TV Unit */}
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -245,9 +341,9 @@ export default function Game() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="w-full h-full"
+                        className="w-full h-full flex items-center justify-center text-white"
                       >
-                        {/* Blank or "Press Start" screen */}
+                        <span className="text-xl">Press Start Game</span>
                       </motion.div>
                     )}
 
@@ -258,7 +354,8 @@ export default function Game() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="w-full h-full"
+                        className="w-full h-full relative"
+                        ref={playerContainerRef}
                       >
                         <ReactPlayer
                           url={levelVideos[currentLevel - 1] || ""}
@@ -268,18 +365,34 @@ export default function Game() {
                           muted={volume === 0}
                           width="100%"
                           height="100%"
-                          // Because it's an iframe from YT, some CSS filters won't pass through
-                          style={{ pointerEvents: "none" }} // user can't click to pause
+                          style={{ pointerEvents: "none" }}
+                          onPlay={() => {
+                            // Once the video starts playing, go fullscreen
+                            if (playerContainerRef.current && screenfull.isEnabled) {
+                              screenfull.request(playerContainerRef.current);
+                            }
+                          }}
                           onEnded={() => {
                             if (gameState === "playing") {
                               setGameState("completed");
                             }
                           }}
                         />
+                        {/* Fullscreen button bottom-right */}
+                        <button
+                          onClick={() => {
+                            if (playerContainerRef.current && screenfull.isEnabled) {
+                              screenfull.toggle(playerContainerRef.current);
+                            }
+                          }}
+                          className="absolute bottom-2 right-2 bg-gray-700 text-white px-3 py-1 rounded z-10"
+                        >
+                          {fsButtonText}
+                        </button>
                       </motion.div>
                     )}
 
-                    {/* COMPLETED => SHOW "LEVEL COMPLETED" SCREEN */}
+                    {/* COMPLETED => LEVEL COMPLETED */}
                     {gameState === "completed" && currentLevel > 0 && (
                       <motion.div
                         key="completed"
@@ -294,7 +407,7 @@ export default function Game() {
                       </motion.div>
                     )}
 
-                    {/* LOST => SHOW "YOU LOSE" SCREEN */}
+                    {/* LOST => YOU LOSE */}
                     {gameState === "lost" && currentLevel > 0 && (
                       <motion.div
                         key="lost"
@@ -302,7 +415,7 @@ export default function Game() {
                         animate={{
                           opacity: 1,
                           rotateX: 0,
-                          transition: { type: "spring", duration: 0.7 },
+                          transition: { type: "spring", duration: 0.7 }
                         }}
                         className="w-full h-full flex items-center justify-center bg-red-500 text-white"
                       >
@@ -318,11 +431,16 @@ export default function Game() {
 
             {/* TV Controls Panel */}
             <div className="w-64 flex flex-col gap-6 p-6 bg-gray-800 rounded-r-lg tv-controls">
-              {/* Level Display + Blink Count */}
+              {/* Level + Blink Count */}
               <div className="flex-1 space-y-6">
                 <motion.div
                   className="flex flex-col items-center gap-2"
-                  animate={{ scale: gameState === "completed" && currentLevel > 0 ? [1, 1.1, 1] : 1 }}
+                  animate={{
+                    scale:
+                      gameState === "completed" && currentLevel > 0
+                        ? [1, 1.1, 1]
+                        : 1
+                  }}
                   transition={{ duration: 0.3 }}
                 >
                   <div className="w-20 h-20 rounded-full bg-black border-4 border-gray-700 flex items-center justify-center retro-screen">
@@ -337,7 +455,6 @@ export default function Game() {
                   </span>
                 </motion.div>
 
-                {/* Blink count only when playing (and not level 0) */}
                 {currentLevel > 0 && gameState === "playing" && (
                   <div className="flex flex-col items-center">
                     <span
@@ -360,22 +477,34 @@ export default function Game() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
-                        onClick={handleStartGame}
+                        onClick={() => {
+                          // Start the level
+                          setCurrentLevel(1);
+                          setGameState("playing");
+                          setBlinkCount(0);
+                        }}
                         className={`${spaceMono.className} w-full bg-blue-900 hover:bg-blue-800 text-blue-200 text-sm py-3 px-4 rounded border-2 border-blue-950 retro-button group relative overflow-hidden`}
                       >
-                        <span className="inline-flex items-center gap-2">START GAME</span>
+                        <span className="inline-flex items-center gap-2">
+                          START GAME
+                        </span>
                         <div className="absolute inset-0 bg-blue-400/10 transform translate-y-full group-hover:translate-y-0 transition-transform duration-200"></div>
                       </motion.button>
                     )}
 
-                    {/* NEXT LEVEL BUTTON */}
+                    {/* NEXT LEVEL */}
                     {gameState === "completed" && currentLevel > 0 && (
                       <motion.button
                         key="next-level"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
-                        onClick={handleNextLevel}
+                        onClick={() => {
+                          setCurrentLevel((prev) => prev + 1);
+                          setGameState("playing");
+                          setBlinkCount(0);
+                          cameraBufferRef.current = [];
+                        }}
                         className={`${spaceMono.className} w-full bg-green-900 hover:bg-green-800 text-green-200 text-sm py-3 px-4 rounded border-2 border-green-950 retro-button group relative overflow-hidden`}
                       >
                         <span className="inline-flex items-center gap-2">
@@ -448,7 +577,7 @@ export default function Game() {
             </div>
           </div>
 
-          {/* TV Stand (Purely Decorative) */}
+          {/* TV Stand (Decor) */}
           <div className="absolute left-1/2 -bottom-16 -translate-x-1/2 w-48 h-16">
             <div className="w-full h-full relative">
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-4 bg-gray-800"></div>
@@ -459,7 +588,7 @@ export default function Game() {
         </motion.div>
       </div>
 
-      {/* WEBCAM FEED (Hidden or Visible) */}
+      {/* WEBCAM FEED (mirrored so user sees themselves) */}
       <video
         ref={webcamRef}
         autoPlay
@@ -473,6 +602,7 @@ export default function Game() {
           border: "2px solid #fff",
           borderRadius: "8px",
           opacity: 0.7,
+          transform: "scaleX(-1)"
         }}
       />
     </main>
