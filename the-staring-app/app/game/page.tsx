@@ -13,15 +13,12 @@ const creepster = Creepster({ weight: "400", subsets: ["latin"] });
 const spaceMono = Space_Mono({ weight: "400", subsets: ["latin"] });
 
 // ----- CONFIG -----
-const MAX_BLINK_COUNT = 25; // increased from 10
-const FRAME_RATE = 10;             // 10 fps
-const BUFFER_LENGTH = FRAME_RATE * 5; // store last 5s => 50 frames
+const MAX_BLINK_COUNT = 25;
+const FRAME_RATE = 10;               
+const BUFFER_LENGTH = FRAME_RATE * 5; 
 
 const levelVideos = [
-  "https://www.youtube.com/watch?v=W184Uc2zC2Y",
-  "https://www.youtube.com/watch?v=oEFSxtjbrq4&ab_channel=PeterGriffin",
-  "https://www.youtube.com/watch?v=zRlaf5uI2uA&ab_channel=RobertRyanIV",
-  "https://www.youtube.com/watch?v=TZiSWOhDIwQ&rco=1&ab_channel=BlueLightningSpecter",
+  "https://www.youtube.com/watch?v=TZiSWOhDIwQ&ab_channel=BlueLightningSpecter",
   "https://www.youtube.com/watch?v=qsJkFb7UW_g&ab_channel=RifqiFirdaus",
   "https://www.youtube.com/watch?v=GMgsFZ4rkEI&ab_channel=BriennRockhill",
   "https://www.youtube.com/watch?v=dJ0Bqg3I9SQ&ab_channel=HeysonLam",
@@ -82,12 +79,16 @@ function ReplayOverlay({
 }
 
 export default function Game() {
-  const [gameState, setGameState] = useState<"playing" | "completed" | "lost">("playing");
+  const [gameState, setGameState] = useState<"playing" | "completed" | "lost">(
+    "playing"
+  );
   const [currentLevel, setCurrentLevel] = useState(0);
   const [blinkCount, setBlinkCount] = useState(0);
 
   const [volume, setVolume] = useState(0.5);
   const [brightness, setBrightness] = useState(1);
+
+  const [lossReason, setLossReason] = useState("");
 
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const webcamRef = useRef<HTMLVideoElement>(null);
@@ -96,7 +97,6 @@ export default function Game() {
   const [showReplay, setShowReplay] = useState(false);
   const [replayFrames, setReplayFrames] = useState<string[]>([]);
 
-  // ReactPlayer container for fullscreen
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const fsButtonText = isFullscreen ? "Exit Fullscreen" : "Fullscreen";
@@ -123,11 +123,17 @@ export default function Game() {
       console.log("From server:", data);
 
       if (currentLevel > 0 && gameState === "playing") {
-        if (data.status === "Looked away") handleLose();
+        // 3a) If "Looked away", lose immediately with reason
+        if (data.status === "Looked away") {
+          handleLose("You looked away from the screen!");
+        } 
+        // 3b) If "Distracted", check blink count
         else if (data.status === "Distracted") {
           setBlinkCount((prev) => {
             const newCount = prev + 1;
-            if (newCount >= MAX_BLINK_COUNT) handleLose();
+            if (newCount >= MAX_BLINK_COUNT) {
+              handleLose("You blinked too many times!");
+            }
             return newCount;
           });
         }
@@ -197,13 +203,17 @@ export default function Game() {
       .catch((err) => console.error("Webcam error:", err));
   }, []);
 
-  // If user switches tabs/apps, they lose
+  // 3c) If user switches tabs/apps, they lose => custom reason
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.hidden && gameState === "playing") handleLose();
+      if (document.hidden && gameState === "playing") {
+        handleLose("Window or tab is no longer active!");
+      }
     };
     const handleBlur = () => {
-      if (gameState === "playing") handleLose();
+      if (gameState === "playing") {
+        handleLose("Window or tab is no longer active!");
+      }
     };
     document.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("blur", handleBlur);
@@ -214,18 +224,21 @@ export default function Game() {
     };
   }, [gameState]);
 
-  // Lose => wait 3s => show replay
-  const handleLose = () => {
+  // 2) Modify handleLose to accept a reason
+  const handleLose = (reason: string) => {
+    setLossReason(reason);
     setGameState("lost");
+
+    // Copy the last BUFFER_LENGTH frames for the replay:
     const framesCopy = [...cameraBufferRef.current];
     cameraBufferRef.current = [];
+
+    // Slight delay, then show the replay
     setTimeout(() => {
       setReplayFrames(framesCopy);
       setShowReplay(true);
     }, 1500);
   };
-
-
 
   // Volume dial
   const handleVolumeDial = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -234,7 +247,10 @@ export default function Game() {
     const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
 
     const handleMove = (moveEvent: MouseEvent) => {
-      const angle = Math.atan2(moveEvent.clientY - center.y, moveEvent.clientX - center.x);
+      const angle = Math.atan2(
+        moveEvent.clientY - center.y,
+        moveEvent.clientX - center.x
+      );
       const degrees = angle * (180 / Math.PI) + 90;
       const normalized = degrees < 0 ? degrees + 360 : degrees;
       const newVolume = Math.max(0, Math.min(1, normalized / 360));
@@ -258,7 +274,10 @@ export default function Game() {
     const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
 
     const handleMove = (moveEvent: MouseEvent) => {
-      const angle = Math.atan2(moveEvent.clientY - center.y, moveEvent.clientX - center.x);
+      const angle = Math.atan2(
+        moveEvent.clientY - center.y,
+        moveEvent.clientX - center.x
+      );
       const degrees = angle * (180 / Math.PI) + 90;
       const normalized = degrees < 0 ? degrees + 360 : degrees;
       const newBrightness = Math.max(0.2, Math.min(1.2, 0.2 + normalized / 360));
@@ -346,7 +365,7 @@ export default function Game() {
                           height="100%"
                           style={{ pointerEvents: "none" }}
                           onPlay={() => {
-                            // Once the video starts playing, go fullscreen
+                            // Fullscreen once video starts
                             if (playerContainerRef.current && screenfull.isEnabled) {
                               screenfull.request(playerContainerRef.current);
                             }
@@ -380,7 +399,9 @@ export default function Game() {
                         transition={{ duration: 0.5 }}
                         className="w-full h-full flex items-center justify-center bg-green-500 text-white"
                       >
-                        <span className={`${creepster.className} text-4xl animate-pulse`}>
+                        <span
+                          className={`${creepster.className} text-4xl animate-pulse`}
+                        >
                           Level {currentLevel} Completed!
                         </span>
                       </motion.div>
@@ -396,10 +417,16 @@ export default function Game() {
                           rotateX: 0,
                           transition: { type: "spring", duration: 0.7 }
                         }}
-                        className="w-full h-full flex items-center justify-center bg-red-500 text-white"
+                        className="w-full h-full flex flex-col items-center justify-center bg-red-500 text-white p-4"
                       >
-                        <span className={`${creepster.className} text-4xl animate-bounce`}>
+                        <span
+                          className={`${creepster.className} text-4xl animate-bounce mb-4`}
+                        >
                           You Lose!
+                        </span>
+                        {/* 4) Show the reason for losing here */}
+                        <span className={`${spaceMono.className} text-base`}>
+                          Reason: {lossReason}
                         </span>
                       </motion.div>
                     )}
@@ -423,7 +450,9 @@ export default function Game() {
                   transition={{ duration: 0.3 }}
                 >
                   <div className="w-20 h-20 rounded-full bg-black border-4 border-gray-700 flex items-center justify-center retro-screen">
-                    <span className={`${spaceMono.className} text-amber-500 text-2xl font-bold`}>
+                    <span
+                      className={`${spaceMono.className} text-amber-500 text-2xl font-bold`}
+                    >
                       {currentLevel.toString().padStart(2, "0")}
                     </span>
                   </div>
@@ -441,7 +470,9 @@ export default function Game() {
                     >
                       Blink Count: {blinkCount}
                     </span>
-                    <span className={`${spaceMono.className} text-xs text-gray-400 tracking-wide`}>
+                    <span
+                      className={`${spaceMono.className} text-xs text-gray-400 tracking-wide`}
+                    >
                       Max: {MAX_BLINK_COUNT}
                     </span>
                   </div>
@@ -457,7 +488,6 @@ export default function Game() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
                         onClick={() => {
-                          // Start the level
                           setCurrentLevel(1);
                           setGameState("playing");
                           setBlinkCount(0);
@@ -540,7 +570,9 @@ export default function Game() {
                   <div className="flex flex-col items-center">
                     <div
                       className="w-16 h-16 rounded-full bg-gray-900 border-4 border-gray-700 relative dial cursor-grab active:cursor-grabbing"
-                      style={{ transform: `rotate(${(brightness - 0.2) * 300}deg)` }}
+                      style={{
+                        transform: `rotate(${(brightness - 0.2) * 300}deg)`
+                      }}
                       onMouseDown={handleBrightnessDial}
                     >
                       <div className="absolute w-1 h-8 bg-amber-500 left-1/2 -translate-x-1/2 origin-bottom"></div>
@@ -567,7 +599,7 @@ export default function Game() {
         </motion.div>
       </div>
 
-      {/* WEBCAM FEED (mirrored so user sees themselves) */}
+      {/* WEBCAM FEED (mirrored for the user) */}
       <video
         ref={webcamRef}
         autoPlay
